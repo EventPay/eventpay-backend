@@ -45,6 +45,7 @@ class User extends Authenticatable
     public function getData(){
         $this->followersCount = $this->followersCount();
         $this->followingCount = $this->followingCount();
+        $this->tickets = $this->tickets();
 
         return $this;
     }

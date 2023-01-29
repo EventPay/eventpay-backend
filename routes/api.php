@@ -3,6 +3,7 @@
 use App\Http\Controllers\auth\AuthController;
 use App\Http\Controllers\auth\EmailVerificationController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\EventCategoryController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\EventTicketController;
@@ -27,6 +28,9 @@ use Illuminate\Support\Facades\Route;
 Route::post("/user/login", [AuthController::class, "login"])->name("login");
 Route::post("/user/register", [AuthController::class, "register"])->name("register");
 
+//misc routes
+Route::post("/contact",[ContactController::class,"send"])->name("contact");
+
 //forgot password
 Route::post("/user/send-forgot-password", [ForgotPasswordController::class, "sendCode"])->name("send_recovery_password");
 Route::post("/user/verify-password-code", [ForgotPasswordController::class, "checkCode"])->name("check_recovery_password");
@@ -36,6 +40,7 @@ Route::group(['middleware' => "auth:sanctum"], function () {
 
     Route::get("/user/get", [UserController::class, "get"])->name("get-user");
     Route::get("/user/get/events", [UserController::class, "events"])->name("get-user-events");
+
     Route::post("/user/edit/profile-image", [UserController::class, "uploadProfile"])->name("upload-profile");
     Route::post("/user/edit/profile", [UserController::class, "edit"])->name("edit-profile");
     Route::post("/user/edit/change-password/", [UserController::class, "changePassword"])->name("change-password");

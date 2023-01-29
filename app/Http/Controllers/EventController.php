@@ -67,6 +67,12 @@ class EventController extends Controller
         $event->description = $validated['description'];
         $event->cover_image = uploadFileRequest($validated['cover_image'], "event", "media");
 
+        //change user to organizer
+        $user = User::find(auth()->user()->id);
+        $user->organizer = true;
+        $user->save();
+        
+
         //     dd($validated['extra_images']);
         $extra_images = array();
         if (isset($validated['extra_images'])) {
