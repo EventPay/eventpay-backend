@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Mail\EventSuspensionMail;
+use App\Mail\WithdrawalApproveMail;
 use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\EventCategoryEntry;
 use App\Models\User;
+use App\Models\Withdrawal;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -281,6 +283,87 @@ class EventController extends Controller
         Mail::to(User::find($event->organizer))->send(new EventSuspensionMail($event));
 
         return back()->with("error", "Event Suspended");
+
+    }
+
+
+    public function withdraw(Request $request){
+
+        $validator = Validator::make($request->all(),[
+            "amount" => "required|numeric|gt:100",
+            "event_id" => "required|integer"
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => $validator->errors(),
+            ],400);
+        }
+
+        $user = User::find(auth()->user()->id);
+        $event = Event::find($request->event_id);
+
+        //check if event exists
+        if(!$event){
+            return response()->json([
+                'error' => "Event does not exist!",
+            ],400);
+        }
+
+        //check for previous withdrawal
+        $prev = Withdrawal::where("user_id",$user->id)->where("status","pending")->get();
+
+        //withdrawal already exists
+        if($prev){
+            return response()->json([
+                'error' => "Pending withdrawal already exists",
+            ],400);
+        }
+
+        //check if amount is available 
+        if($request->amount > $event->revenue){
+            return response()->json([
+                'error' => "Event does not exist!",
+            ],400);
+        }
+
+
+        //process withdrawal
+        $withdrawal = new Withdrawal();
+        $withdrawal->user_id = $user->id;
+        $withdrawal->status =  "pending";
+        $withdrawal->amount == $request->amount;
+        $withdrawal->save();
+
+
+        return response()->json([
+            'success' => "Withdrawal successful",
+        ],200);
+
+    }
+
+
+    public function approveWithdrawal($withdrawal){
+
+        $withdrawal = Withdrawal::find($withdrawal);
+
+        //check if withdrawal exists
+        if(!$withdrawal || $withdrawal->status == "approved"){
+            return response()->json([
+                'error' => "Event does not exist!",
+            ],400);
+        }
+
+        $withdrawal->status = "approved";
+        $withdrawal->save();
+
+        //send email to organizer
+        Mail::to($withdrawal->user)->send(new WithdrawalApproveMail($withdrawal));
+
+        
+        return back()->with("success","Withdrawal approved");
+
+
 
     }
 

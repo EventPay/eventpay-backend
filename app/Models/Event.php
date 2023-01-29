@@ -36,6 +36,10 @@ class Event extends Model
         return $comments;
     }
 
+    public function user(){
+        return $this->belongsTo(User::class,"organizer");
+    }
+
 
     //event promotions
     public static function promoted()

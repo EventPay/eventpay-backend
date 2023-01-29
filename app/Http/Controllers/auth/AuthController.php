@@ -18,6 +18,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             "firstname" => "required|string|max:40",
             "lastname" => "required|string|max:40",
+            "username" => "required|string|max:50|unique",
             "email" => "required|email|unique:users",
             "gender" => "required",
             "phone" => "required",
@@ -36,6 +37,7 @@ class AuthController extends Controller
         $user = new User();
         $user->firstname = $validated['firstname'];
         $user->lastname = $validated['lastname'];
+        $user->username = $validated['username'];
         $user->email = $validated['email'];
         $user->phone = $validated['phone'];
         $user->gender = strtoupper($validated['gender']);
@@ -44,7 +46,23 @@ class AuthController extends Controller
 
         //   dd($user);
 
+  
+
+
+
         if ($user->save()) {
+
+            //Attmept login if user saved
+            if(!Auth::attempt([
+                "email" => $user->email,
+                "password" => $request->password
+            ])){
+                return response()->json([
+                    "error" => "Something is extremely wrong",
+                ], 401);
+            }
+
+
             return response()->json([
                 "success" => "Registration Successful",
                 "token" => $user->createToken("ApiAuthToken")->plainTextToken,
@@ -95,5 +113,25 @@ class AuthController extends Controller
         ]);
 
     }
+
+    public function checkUsernameAvailability(Request $request)
+    {
+        $username = $request->input('username');
+    
+        // Check if the username is already in use
+        $user = User::where('username', $username)->first();
+        if ($user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Username is already taken.'
+            ], 400);
+        }
+    
+        return response()->json([
+            'success' => true,
+            'message' => 'Username is available.'
+        ], 200);
+    }
+    
 
 }

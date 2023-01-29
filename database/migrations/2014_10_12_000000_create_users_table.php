@@ -18,6 +18,7 @@ class CreateUsersTable extends Migration
             $table->string("profile_image")->nullable();
             $table->string('firstname');
             $table->string("lastname");
+            $table->string("username")->unique();
             $table->string('email')->unique();
             $table->string("phone")->nullable();
             $table->boolean("suspended")->default(0);

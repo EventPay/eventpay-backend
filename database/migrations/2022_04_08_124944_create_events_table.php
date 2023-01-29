@@ -22,8 +22,7 @@ class CreateEventsTable extends Migration
             $table->timestamp("endDate")->nullable();
             $table->bigInteger("organizer");
             $table->longText("description");
-            $table->decimal("revenue", 20, 2);
-  
+            $table->decimal("revenue", 20, 2)->default(0);
             $table->boolean("active");
             $table->enum("status", ['LIVE', 'FINISHED', 'PENDING', "REVIEWING"]);
             $table->longText("cover_image");

@@ -5,17 +5,25 @@ namespace App\Http\Controllers;
 use App\Mail\ContactMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 
 class ContactController extends Controller
 {
-    public function sendContactEmail(Request $request)
+    public function send(Request $request)
     {
-        $request->validate([
+
+        $validation = Validator::make($request->all(),[
             'name' => 'required',
             'email' => 'required|email',
             'subject' => 'required',
             'message' => 'required',
         ]);
+
+        if ($validation->fails()) {
+            return response()->json([
+                'error' => $validation->errors(),
+            ]);
+        }
 
         $data = [
             'name' => $request->name,
