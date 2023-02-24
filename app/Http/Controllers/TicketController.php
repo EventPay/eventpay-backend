@@ -176,6 +176,10 @@ class TicketController extends Controller
                 'error' => "Ticket has already been used",
             ]);
         } else {
+
+            //Notify user that notification was sent
+            
+
             //make ticket useless
             return response()->json([
                 'success' => "Ticket has been validated successfully",

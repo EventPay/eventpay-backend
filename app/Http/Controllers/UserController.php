@@ -29,6 +29,24 @@ class UserController extends Controller
 
     }
 
+    public function notifications(){
+        //check user existence
+
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json([
+                "error" => "User not found",
+            ]);
+        }
+      
+        //get notifications in paginated order
+        $notifications = $user->notifications()->orderBy("id","desc")->paginate(15);
+      return response()->json([
+            "success" => "Retrieval success",
+            "notifications" => $notifications->getCollection()
+        ]);
+    }
+
     public function uploadProfile(Request $request)
     {
         $validation = Validator::make($request->all(), [

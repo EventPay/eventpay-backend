@@ -43,6 +43,7 @@ Route::group(['middleware' => "auth:sanctum"], function () {
 
     Route::get("/user/get", [UserController::class, "get"])->name("get-user");
     Route::get("/user/get/events", [UserController::class, "events"])->name("get-user-events");
+    Route::get("/user/get/notifications",[UserController::class,"notifications"])->name("get-notifications");
 
     Route::post("/user/edit/profile-image", [UserController::class, "uploadProfile"])->name("upload-profile");
     Route::post("/user/edit/profile", [UserController::class, "edit"])->name("edit-profile");

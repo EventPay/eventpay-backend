@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
         $mark->email = "markfrank2nite@gmail.com";
         $mark->phone = "09098575791";
         $mark->gender = "MALE";
+        $mark->username = "'markfrank";
         $mark->password = Hash::make("markfrank");
         $mark->save();
 

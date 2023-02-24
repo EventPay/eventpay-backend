@@ -73,6 +73,7 @@ class User extends Authenticatable
         return $userTickets;
     }
 
+
     public function followersCount()
     {
         $count = Follow::where("target_user", $this->id)->count();
