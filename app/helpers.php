@@ -4,24 +4,40 @@ use App\Models\User;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Intervention\Image\Facades\Image;
 
-function uploadFileRequest($file, $name, $folder)
+function uploadFileRequest($file, $name, $folder,$extension = null)
 {
 
     //change imagename to unix time stamp
     $fileName = uniqid("$name" . "_");
-    $fileExtension = $file->getClientOriginalExtension();
-    $fileNewName = $fileName . "." . $fileExtension;
 
+
+    $fileNewName = $fileName . ".jpg" ;
     //print_r($file);
     //exit();
 
-    Image::make($file->getRealpath())->save(public_path("storage/$folder/$fileNewName"), 40, "jpg");
+    $file->encode("jpg",80)->save(public_path("storage/$folder/$fileNewName"));
 
     //  $file->storeAs("public/$folder", $fileNewName);
 
     return "$folder/$fileNewName";
+
+}
+
+function getBaseExtension($string){
+// Decode the base64 string
+$decodedData = base64_decode($string);
+
+// Determine the MIME type
+$finfo = new finfo(FILEINFO_MIME_TYPE);
+$mimeType = $finfo->buffer($decodedData);
+
+// Extract the extension from the MIME type
+$extension = File::extension($mimeType);
+
+return $extension;
 
 }
 

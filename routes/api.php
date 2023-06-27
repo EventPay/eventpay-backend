@@ -62,7 +62,6 @@ Route::group(['middleware' => "auth:sanctum"], function () {
 
     Route::get("/event/get/{event_id}", [EventController::class, "show"])->name("getEvent");
 
-    Route::group(['middleware' => "email_auth"], function () {
 
         //following
         Route::post("/user/follow-user", [FollowController::class, "follow"])->name("follow_user");
@@ -76,7 +75,6 @@ Route::group(['middleware' => "auth:sanctum"], function () {
         Route::post("/event/crew/add",[CrewController::class,"store"])->name("add_crew");
         Route::post("/event/crew/delete",[CrewController::class,"delete"])->name("remove_crew");
 
-    });
 
     Route::get("/event/search/", [EventController::class, "search"])->name("search-event");
 

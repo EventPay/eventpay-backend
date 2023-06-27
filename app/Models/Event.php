@@ -56,6 +56,22 @@ class Event extends Model
 
     }
 
+
+    public function categoryName(){
+        $categories = EventCategoryEntry::where("event",$this->id)->get();
+        $names = array();
+        foreach($categories as $category){
+
+            $name = EventCategory::find($category->category);
+
+            if($name){
+                array_push($names,$name->name);
+            }
+        }
+        
+        return json_encode($names);
+    }
+
     public static function featured()
     {
         // returns all featured events

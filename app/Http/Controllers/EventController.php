@@ -4,15 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Mail\EventSuspensionMail;
 use App\Mail\WithdrawalApproveMail;
+use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\EventCategoryEntry;
 use App\Models\User;
 use App\Models\Withdrawal;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Intervention\Image\Facades\Image;
 
 class EventController extends Controller
 {
@@ -44,10 +47,12 @@ class EventController extends Controller
             "startDate" => "required",
             "endDate" => "required",
             "description" => "required | string",
-            "cover_image" => "required | image",
+            "cover_image" => "required",
             "categories" => "required",
+            "type" => "required",
+            "visibility" => "required",
             "extra_images" => "nullable",
-            "extra_images*" => "image",
+            "extra_images*" => "string",
             "tags" => "nullable",
         ], [
             "title.unique" => "The event name already exists",
@@ -55,32 +60,55 @@ class EventController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 "error" => $validator->errors(),
-            ]);
+            ],400);
         }
 
         $validated = $validator->validated();
+
+        $extension = getBaseExtension($validated['cover_image']);
+
+        try {
+            // Decode the base64 string into an image file
+            $cover_image = Image::make(base64_decode($validated['cover_image']));
+        } catch (Exception $e) {
+            return response()->json([
+                "error" => "Invalid Cover Image",
+            ]);
+        }
 
         $event = new Event();
         $event->title = $validated['title'];
         $event->startDate = Carbon::parse($validated['startDate']);
         $event->endDate = Carbon::parse($validated['endDate']);
         $event->status = "PENDING";
+        $event->visibility = strtoupper($validated['visibility']);
+        $event->type = strtoupper($validated['type']);
         $event->organizer = auth()->user()->id;
         $event->description = $validated['description'];
-        $event->cover_image = uploadFileRequest($validated['cover_image'], "event", "media");
+        $event->active = true;
 
         //change user to organizer
         $user = User::find(auth()->user()->id);
         $user->organizer = true;
         $user->save();
-        
+
+        $event->cover_image = uploadFileRequest($cover_image, "event", "media", $extension);
 
         //     dd($validated['extra_images']);
         $extra_images = array();
         if (isset($validated['extra_images'])) {
             foreach ($validated['extra_images'] as $image) {
-                $url = uploadFileRequest($image, "event_extra", "media");
-                array_push($extra_images, $url);
+                try{
+                    $img = Image::make(base64_decode($image));
+                    $extension = getBaseExtension($image);
+    
+                    $url = uploadFileRequest($img, "event_extra", "media", $extension);
+                    array_push($extra_images, $url);
+                }
+                catch(Exception $e){
+
+                }
+ 
             }
 
         }
@@ -88,27 +116,36 @@ class EventController extends Controller
         $event->extra_images = json_encode($extra_images);
         //extra images
 
-        $event->tags = $validated['tags'];
+        if(isset($validated['tags'])){
+            $event->tags = $validated['tags'];
+        }
+        else{
+            $event->tags = null;
+        }
 
         if ($event->save()) {
             //parse categories after event save
 
-            $categories = json_decode($validated['categories']);
+                $categories =$validated['categories'];
 
-            foreach ($categories as $category) {
-                $cat = EventCategory::find($category);
-                if ($cat) {
-                    $entry = new EventCategoryEntry();
-                    $entry->event = $event->id;
-                    $entry->category = $cat->id;
-                    $entry->save();
+                foreach ($categories as $category) {
+                    $cat = EventCategory::find($category);
+
+                    if ($cat) {
+                        $entry = new EventCategoryEntry();
+                        $entry->event = $event->id;
+                        $entry->category = $cat->id;
+                        $entry->save();
+                    }
+
+    
                 }
 
-            }
+
+    
 
             return response()->json([
                 "success" => "Event created successfully",
-
             ]);
         } else {
 
@@ -126,10 +163,12 @@ class EventController extends Controller
             "startDate" => "required",
             "endDate" => "required",
             "description" => "required | string",
-            "cover_image" => "required | image",
+            "cover_image" => "required | string",
+            "type" => "required",
+            "visibility" => "required",
             "categories" => "required",
             "extra_images" => "nullable",
-            "extra_images*" => "image",
+            "extra_images*" => "string",
             "tags" => "required",
         ]);
         if ($validator->fails()) {
@@ -145,14 +184,23 @@ class EventController extends Controller
         $event->startDate = Carbon::parse($validated['startDate']);
         $event->endDate = Carbon::parse($validated['endDate']);
         $event->status = "PENDING";
+        $event->visibility = strtoupper($validated['visibility']);
+        $event->type = strtoupper($validated['type']);
         $event->description = $validated['description'];
-        $event->cover_image = uploadFileRequest($validated['cover_image'], "event", "media");
+
+        //check if image or base64
+
+        // Decode the base64 string into an image file
+        $cover_image = Image::make(base64_decode($validated['cover_image']));
+
+        $event->cover_image = uploadFileRequest($cover_image, "event", "media");
 
         //     dd($validated['extra_images']);
         $extra_images = array();
         if (isset($validated['extra_images'])) {
             foreach ($validated['extra_images'] as $image) {
-                $url = uploadFileRequest($image, "event_extra", "media");
+                $img = Image::make(base64_decode($image));
+                $url = uploadFileRequest($img, "event_extra", "media");
                 array_push($extra_images, $url);
             }
 
@@ -259,8 +307,13 @@ class EventController extends Controller
     {
         //algorithm gets recent events by date
 
-        $events = Event::where("status", "!=", "FINISHED")->orderByDesc("created_at")->get();
+        $eventsReturn = Event::where("status", "!=", "FINISHED")->where("status", "!=", "REVIEWING")->orderByDesc("created_at")->get();
+        $events = array();
 
+        foreach($events as $event){
+            $event->category = $event->categoryName;
+            array_push($events,$event);
+        }
         return response([
             'success' => true,
             'events' => $events,
@@ -286,72 +339,70 @@ class EventController extends Controller
 
     }
 
+    public function withdraw(Request $request)
+    {
 
-    public function withdraw(Request $request){
-
-        $validator = Validator::make($request->all(),[
+        $validator = Validator::make($request->all(), [
             "amount" => "required|numeric|gt:100",
-            "event_id" => "required|integer"
+            "event_id" => "required|integer",
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'error' => $validator->errors(),
-            ],400);
+            ], 400);
         }
 
         $user = User::find(auth()->user()->id);
         $event = Event::find($request->event_id);
 
         //check if event exists
-        if(!$event){
+        if (!$event) {
             return response()->json([
                 'error' => "Event does not exist!",
-            ],400);
+            ], 400);
         }
 
         //check for previous withdrawal
-        $prev = Withdrawal::where("user_id",$user->id)->where("status","pending")->get();
+        $prev = Withdrawal::where("user_id", $user->id)->where("status", "pending")->get();
 
         //withdrawal already exists
-        if($prev){
+        if ($prev) {
             return response()->json([
                 'error' => "Pending withdrawal already exists",
-            ],400);
+            ], 400);
         }
 
-        //check if amount is available 
-        if($request->amount > $event->revenue){
+        //check if amount is available
+        if ($request->amount > $event->revenue) {
             return response()->json([
                 'error' => "Event does not exist!",
-            ],400);
+            ], 400);
         }
-
 
         //process withdrawal
         $withdrawal = new Withdrawal();
         $withdrawal->user_id = $user->id;
-        $withdrawal->status =  "pending";
+        $withdrawal->status = "pending";
         $withdrawal->amount == $request->amount;
         $withdrawal->save();
 
-
         return response()->json([
             'success' => "Withdrawal successful",
-        ],200);
+        ], 200);
 
     }
 
-
-    public function approveWithdrawal($withdrawal){
+    public function approveWithdrawal($withdrawal)
+    {
 
         $withdrawal = Withdrawal::find($withdrawal);
 
         //check if withdrawal exists
-        if(!$withdrawal || $withdrawal->status == "approved"){
+        if (!$withdrawal || $withdrawal->status == "approved") {
             return response()->json([
                 'error' => "Event does not exist!",
-            ],400);
+            ], 400);
         }
 
         $withdrawal->status = "approved";
@@ -360,10 +411,7 @@ class EventController extends Controller
         //send email to organizer
         Mail::to($withdrawal->user)->send(new WithdrawalApproveMail($withdrawal));
 
-        
-        return back()->with("success","Withdrawal approved");
-
-
+        return back()->with("success", "Withdrawal approved");
 
     }
 
