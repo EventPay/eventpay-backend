@@ -18,13 +18,13 @@ class EmailVerification
     public function handle(Request $request, Closure $next)
     {
 
-        //checks if user's email is verified
-        $user = Auth::user();
-        if($user->email_verified_at == null){
-            return response()->json([
-                "error" => "E-mail unverified"
-            ],401);
-        }
+        // //checks if user's email is verified
+        // $user = Auth::user();
+        // if($user->email_verified_at == null){
+        //     return response()->json([
+        //         "error" => "E-mail unverified"
+        //     ],401);
+        // }
         return $next($request);
     }
 }

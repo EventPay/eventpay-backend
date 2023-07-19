@@ -68,6 +68,7 @@ Route::group(['middleware' => "auth:sanctum"], function () {
         Route::post("/user/unfollow-user", [FollowController::class, "unFollow"])->name("unfollow_user");
 
         Route::post("/event/create", [EventController::class, "create"])->name("create-event");
+        Route::post("/event/create/test", [EventController::class, "createSecond"])->name("create-event");
         Route::post("/event/edit/{id}", [EventController::class, "edit"])->name("edit-event");
         Route::post("/event/delete/{id}", [EventController::class, "delete"])->name("delete-event");
 
