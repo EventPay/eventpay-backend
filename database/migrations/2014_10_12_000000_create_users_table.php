@@ -15,9 +15,11 @@ class CreateUsersTable extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->boolean("admin")->default(false);
             $table->string("profile_image")->nullable();
             $table->string('firstname');
             $table->string("lastname");
+            $table->longText("bio")->nullable();
             $table->string("username")->unique();
             $table->string('email')->unique();
             $table->string("phone")->nullable();
@@ -32,7 +34,7 @@ class CreateUsersTable extends Migration
         });
     }
 
-    
+
     public function down()
     {
         Schema::dropIfExists('users');

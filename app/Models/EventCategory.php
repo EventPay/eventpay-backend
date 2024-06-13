@@ -13,13 +13,16 @@ class EventCategory extends Model
 
     function events(){
 
-        
+
         $entries = EventCategoryEntry::where("category",$this->id)->get();
         $events = array();
 
         foreach($entries as $entry){
-            $event = Event::find($entry->event);
-            array_push($events);
+
+            $event = Event::with('user')->find($entry->event);
+            if($event){
+                array_push($events,$event);
+            }
         }
 
         return $events;

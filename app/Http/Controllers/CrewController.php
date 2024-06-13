@@ -6,7 +6,6 @@ use App\Models\Crew;
 use App\Models\Event;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class CrewController extends Controller
@@ -42,7 +41,7 @@ class CrewController extends Controller
      *     "error": "User does not exist!"
      * }
      */
-    public function add(Request $request)
+    public function create(Request $request)
     {
         $validator = Validator::make($request->all(), [
             "event_id" => "required|integer",

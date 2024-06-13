@@ -15,7 +15,25 @@ use Illuminate\Support\Facades\Validator;
 
 class EmailVerificationController extends Controller
 {
-
+/**
+     * Send a verification code via email.
+     *
+     * Sends a verification code to the user's email address for email verification.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam code int A numeric verification code (required)
+     *
+     * @response {
+     *     "success": "Code sent"
+     * }
+     * @response 400 {
+     *     "error": "Code is required"
+     * }
+     * @response 500 {
+     *     "error": "Error sending mail : [error message]"
+     * }
+     */
     public function sendVerificationCode()
     {
 
@@ -57,6 +75,30 @@ class EmailVerificationController extends Controller
         }
 
     }
+
+      /**
+     * Verify the email verification code.
+     *
+     * Verifies the email verification code sent to the user's email address.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam code int The verification code (numeric) (required)
+     *
+     * @response {
+     *     "success": "E-mail verification successful"
+     * }
+     * @response 400 {
+     *     "error": "Code is required"
+     * }
+     * @response 401 {
+     *     "error": "Incorrect code"
+     * }
+     * @response 403 {
+     *     "error": "Code expired, please request another one"
+     * }
+     */
 
     public function verifyCode(Request $request)
     {

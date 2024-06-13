@@ -24,6 +24,10 @@ class Event extends Model
         return $this->hasMany(EventTicket::class, "event_id");
     }
 
+    function attendees(){
+        return $this->hasManyThrough(Ticket::class,EventTicket::class,"event_id","parent_ticket");
+    }
+
     public function comments()
     {
         $mainComments = Comment::where("event_id", $this->id)->where("parent_id", null)->get();
@@ -68,7 +72,7 @@ class Event extends Model
                 array_push($names,$name->name);
             }
         }
-        
+
         return json_encode($names);
     }
 

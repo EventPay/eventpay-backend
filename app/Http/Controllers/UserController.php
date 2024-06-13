@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -95,7 +96,6 @@ class UserController extends Controller
             "notifications" => $notifications->getCollection(),
         ]);
     }
-
     /**
      * Upload user profile image.
      *
@@ -103,6 +103,8 @@ class UserController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam file profile_image The user's profile image (required|image)
      *
      * @response {
      *     "success": "Profile image uploaded successfully"
@@ -128,15 +130,57 @@ class UserController extends Controller
         }
 
         $validated = $validation->validated();
-        // Validation successful
 
         $user = User::find(auth()->user()->id);
-
-        $user->profile_image = uploadFileRequest($validated['profile_image'], 'profile', 'profile');
+        $user->profile_image = uploadFileRequest($validated['profile_image'], 'profile', 'media');
         $user->save();
 
         return response()->json([
             'success' => 'Profile image uploaded successfully',
+        ]);
+    }
+
+    /**
+     * Upload oranizer cover image.
+     *
+     * Uploads and updates the cover image of the authenticated organizer.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam file cover_image The user's cover_image image (required|image)
+     *
+     * @response {
+     *     "success": "Cover image uploaded successfully"
+     * }
+     * @response 422 {
+     *     "error": {
+     *         "cover_image": [
+     *             "The cover image field is required."
+     *         ]
+     *     }
+     * }
+     */
+    public function uploadCoverImage(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'cover_image' => 'required|image',
+        ]);
+
+        if ($validation->fails()) {
+            return response()->json([
+                'error' => $validation->errors(),
+            ], 422);
+        }
+
+        $validated = $validation->validated();
+
+        $user = User::find(auth()->user()->id);
+        $user->cover_image = uploadFileRequest($validated['cover_image'], 'profile', 'media');
+        $user->save();
+
+        return response()->json([
+            'success' => 'Cover image uploaded successfully',
         ]);
     }
 
@@ -147,6 +191,11 @@ class UserController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam string firstname The user's first name (required)
+     * @bodyParam string lastname The user's last name (required)
+     * @bodyParam string phone The user's phone number (required|numeric)
+     * @bodyParam string gender The user's gender (required)
      *
      * @response {
      *     "success": true
@@ -173,6 +222,7 @@ class UserController extends Controller
         $request->validate([
             'firstname' => 'required',
             'lastname' => 'required',
+            'bio' => 'nullable',
             'phone' => 'required|numeric',
             'gender' => 'required',
         ]);
@@ -181,6 +231,10 @@ class UserController extends Controller
         $user->firstname = $request->input('firstname');
         $user->lastname = $request->input('lastname');
         $user->phone = $request->input('phone');
+        if ($request->has("bio")) {
+            $user->bio = $request->input("bio");
+        }
+
         $user->gender = $request->input('gender');
         $user->save();
 
@@ -196,6 +250,10 @@ class UserController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam string previous_password The user's previous password (required)
+     * @bodyParam string password The new password (required|confirmed)
+     * @bodyParam string password_confirmation The confirmation of the new password (required)
      *
      * @response {
      *     "success": true
@@ -266,4 +324,80 @@ class UserController extends Controller
             "events" => auth()->user()->events,
         ]);
     }
+
+
+    public function getOrganizer($id)
+    {
+
+        // Check user existence
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                "error" => "User not found",
+            ], 401);
+        }
+
+        // User found
+        return response()->json([
+            "success" => "Retrieval success",
+            "user" => $user->getData(),
+        ]);
+    }
+
+
+
+    public function tickets()
+    {
+        $user = auth()->user();
+        $upcoming_events = array();
+        $events_attended = array();
+
+        $tickets = Ticket::where("user_id", $user->id)->with(['eventTicket.event'])->get();
+
+        foreach ($tickets as $ticket) {
+            // Check if the event's end date is greater than or equal to the current time
+            // Also, use !in_array($ticket->eventTicket->event, $upcoming_events) to avoid duplicate events
+            if ($ticket->eventTicket->event->endDate >= now() && !in_array($ticket->eventTicket->event, $upcoming_events)) {
+                array_push($upcoming_events, $ticket->eventTicket->event);
+            }
+
+            if ($ticket->eventTicket->event->endDate <= now() && !in_array($ticket->eventTicket->event, $events_attended)) {
+                if($ticket->status == "USED"){
+                    array_push($events_attended, $ticket->eventTicket->event);
+                }
+            }
+        }
+
+        return response()->json([
+            "success" => "Request Successful",
+            "tickets" => $tickets,
+            "upcoming_events" => $upcoming_events,
+            "events_attended" => $events_attended,
+        ]);
+    }
+
+
+
+
+    function organizer($id){
+
+
+
+    }
+
+
+    function organizers(){
+        $user = auth()->user();
+
+        $organizers = User::where("organizer",true)->orderBy("created_at","asc")->get();
+
+
+        return response()->json([
+            "success" => "Request Successful",
+            "organizers" => $organizers,
+        ]);
+
+
+    }
+
 }

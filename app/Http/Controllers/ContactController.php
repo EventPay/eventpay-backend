@@ -12,7 +12,7 @@ class ContactController extends Controller
     public function send(Request $request)
     {
 
-        $validation = Validator::make($request->all(),[
+        $validation = Validator::make($request->all(), [
             'name' => 'required',
             'email' => 'required|email',
             'subject' => 'required',
@@ -32,8 +32,10 @@ class ContactController extends Controller
             'message' => $request->message,
         ];
 
-        Mail::to(config('mail.from.address'))->send(new ContactMail($data));
+        Mail::to("support@attend.org.ng")->send(new ContactMail($data));
 
-        return back()->with('success', 'Your message has been sent successfully!');
+        return response()->json([
+            "success" => "Message Sent",
+        ]);
     }
 }

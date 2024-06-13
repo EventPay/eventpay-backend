@@ -16,12 +16,12 @@ class TicketPurchaseMail extends Mailable
      * @return void
      */
     public $user;
-    public $eventTicket;
+    public $ticket;
 
-    public function __construct($user, $eventTicket)
+    public function __construct($user, $ticket)
     {
         $this->user = $user;
-        $this->eventTicket = $eventTicket;
+        $this->ticket = $ticket;
     }
 
     /**
@@ -31,6 +31,6 @@ class TicketPurchaseMail extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.ticket_purchase');
+        return $this->markdown('mail.ticket_purchase')->subject("Your ticket has arrived");
     }
 }

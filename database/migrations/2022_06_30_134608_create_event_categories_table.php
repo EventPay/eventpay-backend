@@ -18,7 +18,8 @@ class CreateEventCategoriesTable extends Migration
             $table->timestamps();
             $table->string("name");
             $table->string("slug");
-
+            $table->string("placeholder");
+            $table->longText("description");
         });
     }
 

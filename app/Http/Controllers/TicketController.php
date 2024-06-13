@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Mail\TicketPurchaseMail;
+use App\Mail\TicketReminder;
 use App\Models\Event;
 use App\Models\EventTicket;
 use App\Models\Ticket;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
@@ -44,6 +46,12 @@ class TicketController extends Controller
             'event_ticket_id' => "required",
         ]);
 
+        $quantity = 1;
+
+        if ($request->has("quantity")) {
+            $quantity = $request->quantity ?? 1;
+        }
+
         if ($validation->fails()) {
             return response()->json([
                 'error' => $validation->errors(),
@@ -63,6 +71,11 @@ class TicketController extends Controller
         $eventTicket = EventTicket::find($validated['event_ticket_id']);
 
         // Check if tickets are still available
+        // dd("omo");
+
+
+
+
         if ($eventTicket->capacity <= 0) {
             // Tickets not available
             return response()->json([
@@ -70,8 +83,43 @@ class TicketController extends Controller
             ], 204);
         }
 
+
+        if($eventTicket->price <= 0){
+
+            $user = Auth::user();
+
+            $ticket = new Ticket();
+            $ticket->user_id = $user->id;
+            $ticket->parent_ticket = $eventTicket->id;
+            $ticket->status = "UNUSED";
+            $ticket->amount_paid = $eventTicket->price;
+            $ticket->ticket_code = str_replace(" ", "", substr(strtolower($eventTicket->event->title), 0, 9)) . uniqid();
+            $ticket->save();
+
+            // Add revenue and generate transactions
+            $event = Event::find($eventTicket->event_id);
+            $event->revenue += $eventTicket->price * $quantity;
+            $event->save();
+
+
+            // Send buy email to user
+            Mail::to($user)->send(new TicketPurchaseMail($user, $ticket));
+
+
+        return redirect("https://attend.org.ng/my-profile");
+    }
+
+        //   dd("omo");
+        //check if event time passed
+
+        if ($eventTicket->event->endDate <= now()) {
+            return response()->json([
+                'error' => "Event has ended",
+            ], 204);
+        }
+
         // Generate paystack URL
-        $url = getPaystackUrl($eventTicket, auth()->user());
+        $url = getPaystackUrl($eventTicket, auth()->user(), $quantity);
 
         if ($url == null) {
             return response()->json([
@@ -105,7 +153,7 @@ class TicketController extends Controller
      *     "error": "Invalid Event Ticket ID"
      * }
      */
-    public function validatePayment(Request $request, $event_ticket_id, $user_id)
+    public function validatePayment(Request $request, $user_id, $event_ticket_id, $quantity)
     {
         $validation = Validator::make($request->all(), [
             'trxref' => "required",
@@ -119,7 +167,7 @@ class TicketController extends Controller
 
         $validated = $validation->validated();
 
-        $success = verifyPaystackPayment($validated['trxref']);
+        $success = verifyPaystackPayment($validated['trxref'], $event_ticket_id);
         // Transaction not verified by paystack
         if (!$success) {
             return response()->json([
@@ -138,39 +186,46 @@ class TicketController extends Controller
             ]);
         }
 
-        $ticket = new Ticket();
-        $ticket->user_id = $user->id;
-        $ticket->parent_ticket = $eventTicket->id;
-        $ticket->status = "UNUSED";
-        $ticket->ticket_code = str_replace(" ", "", substr(strtolower($eventTicket->event->title), 0, 9)) . uniqid();
-        $ticket->save();
+        for ($number = 1; $number <= $quantity; $number++) {
+            $ticket = new Ticket();
+            $ticket->user_id = $user->id;
+            $ticket->parent_ticket = $eventTicket->id;
+            $ticket->status = "UNUSED";
+            $ticket->amount_paid = $eventTicket->price;
+            $ticket->ticket_code = str_replace(" ", "", substr(strtolower($eventTicket->event->title), 0, 9)) . uniqid();
+            $ticket->save();
 
-        // Add revenue and generate transactions
-        $event = Event::find($eventTicket->event_id);
-        $event->revenue += $eventTicket->price;
+            // Add revenue and generate transactions
+            $event = Event::find($eventTicket->event_id);
+            $event->revenue += $eventTicket->price * $quantity;
+            $event->save();
+
+            // Send buy email to user
+            Mail::to($user)->send(new TicketPurchaseMail($user, $ticket));
+        }
+
+        //Reduce the amount available
+        $eventTicket->capacity -= $quantity ?? 1;
+        $eventTicket->save();
 
         // Transactions
         $organizer_transaction = new Transaction();
-        $organizer_transaction->amount = $eventTicket->price;
+        $organizer_transaction->amount = $eventTicket->price * $quantity;
         $organizer_transaction->description = "Ticket Purchase: " . substr($event->title, 0, 10) . " (" . $eventTicket->name . ")";
         $organizer_transaction->status = "APPROVED";
         $organizer_transaction->user_id = $event->organizer;
         $organizer_transaction->save();
 
         $user_transaction = new Transaction();
-        $user_transaction->amount = $eventTicket->price;
+        $user_transaction->amount = $eventTicket->price * $quantity;
         $user_transaction->description = substr($event->title, 0, 10) . " Ticket purchased (" . $eventTicket->name . ")";
         $user_transaction->status = "APPROVED";
         $user_transaction->user_id = $user->id;
         $user_transaction->save();
 
-        // Send buy email to user
-        //Mail::to($user)->send(new TicketPurchaseMail($user, $eventTicket));
         // Return response
 
-        return response()->json([
-            "success" => "Ticket created successfully",
-        ]);
+        return redirect("https://attend.org.ng/my-profile");
     }
 
     /**
@@ -198,6 +253,7 @@ class TicketController extends Controller
     {
         $validation = Validator::make($request->all(), [
             "ticket_code" => "required",
+            "auth_key" => "required",
         ]);
 
         if ($validation->fails()) {
@@ -209,7 +265,7 @@ class TicketController extends Controller
         $validated = $validation->validated();
 
         // Get the particular ticket
-        $ticket = Ticket::where("ticket_code", $validated['ticket_code'])->first();
+        $ticket = Ticket::where("ticket_code", $validated['ticket_code'])->with("eventTicket")->get()->first();
 
         if (!$ticket) {
             return response()->json([
@@ -217,11 +273,11 @@ class TicketController extends Controller
             ]);
         }
 
-        // Check if the logged-in user is the owner of the event
-        $user = auth()->user();
-        if (!$user || $user->id !== $ticket->eventTicket->event->organizer) {
+        //   return $request->input("auth_key")." and the ".$ticket->eventTicket->event->auth_key;
+
+        if ($ticket->eventTicket->event->auth_key != $request->input("auth_key")) {
             return response()->json([
-                'error' => "Current user is not an organizer",
+                'error' => "You are not allowed to access this page!",
             ]);
         }
 
@@ -229,14 +285,95 @@ class TicketController extends Controller
         if ($ticket->status == "USED") {
             return response()->json([
                 'error' => "Ticket has already been used",
+                "ticket" => $ticket,
             ]);
         } else {
-            // Notify user that notification was sent
-
             // Make ticket useless
+            $ticket->status = "USED";
+            $ticket->save();
             return response()->json([
                 "success" => "Ticket has been validated successfully",
+                "ticket" => $ticket,
             ]);
         }
+    }
+
+    public function adminPurchase(Request $request)
+    {
+        $request->validate([
+            'event_ticket' => 'required|exists:event_tickets,id',
+            'user_email' => 'required|email',
+            'quantity' => 'required|integer',
+        ]);
+
+        $eventTicket = EventTicket::findOrFail($request->input('event_ticket'));
+        $userEmail = $request->input('user_email');
+        $quantity = $request->input("quantity") ?? 1;
+
+        //Find User
+
+        $user = User::where("email", $userEmail)->get()->first();
+        if (!$user) {
+            return back()->with("error", "No user found");
+        }
+        for ($number = 1; $number <= $quantity; $number++) {
+            $ticket = new Ticket();
+            $ticket->user_id = $user->id;
+            $ticket->parent_ticket = $eventTicket->id;
+            $ticket->status = "UNUSED";
+            $ticket->amount_paid = $eventTicket->price;
+            $ticket->ticket_code = str_replace(" ", "", substr(strtolower($eventTicket->event->title), 0, 9)) . uniqid();
+            $ticket->save();
+
+            // Add revenue and generate transactions
+            $event = Event::find($eventTicket->event_id);
+            $event->revenue += $eventTicket->price * $quantity;
+            $event->save();
+
+            Mail::to($user)->send(new TicketPurchaseMail($user, $ticket));
+        }
+
+        //Reduce the amount available
+        $eventTicket->capacity -= $quantity ?? 1;
+        $eventTicket->save();
+
+        // Transactions
+        $organizer_transaction = new Transaction();
+        $organizer_transaction->amount = $eventTicket->price * $quantity;
+        $organizer_transaction->description = "Ticket Purchase: " . substr($event->title, 0, 10) . " (" . $eventTicket->name . ")";
+        $organizer_transaction->status = "APPROVED";
+        $organizer_transaction->user_id = $event->organizer;
+        $organizer_transaction->save();
+
+        $user_transaction = new Transaction();
+        $user_transaction->amount = $eventTicket->price * $quantity;
+        $user_transaction->description = substr($event->title, 0, 10) . " Ticket purchased (" . $eventTicket->name . ")";
+        $user_transaction->status = "APPROVED";
+        $user_transaction->user_id = $user->id;
+        $user_transaction->save();
+
+        // Send buy email to user
+
+        // Return response
+
+        // Redirect back with a success message
+        return redirect()->back()->with('success', 'Ticket purchased successfully!');
+    }
+
+    public function sendReminder()
+    {
+
+        $event = Event::find(8);
+
+        $tickets = $event->attendees()->get();
+        $count = 0;
+
+        foreach ($tickets as $ticket) {
+            Mail::to($ticket->user)->send(new TicketReminder($ticket));
+            $count++;
+        }
+
+        return "Reminder Email sent with count" . $count;
+
     }
 }

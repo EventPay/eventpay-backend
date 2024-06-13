@@ -1,16 +1,16 @@
 @component('mail::message')
 # New Contact Message
 
-You have received a new contact message from {{ $name }}.
+You have received a new contact message from {{ $data['name'] }}.
 
 ## Details
 
-- Name: {{ $name }}
-- Email: {{ $email }}
-- Subject: {{ $subject }}
+- Name: {{ $data['name'] }}
+- Email: {{ $data['email'] }}
+- Subject: {{ $data['subject'] }}
 
 ## Message
 
-{{ $message }}
+{{ $data['message'] }}
 
 @endcomponent

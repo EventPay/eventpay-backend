@@ -32,22 +32,27 @@ class DatabaseSeeder extends Seeder
         $eventCategory = new EventCategory();
         $eventCategory->name = "Party";
         $eventCategory->slug = "party";
+        $eventCategory->description = "A night of fun to enjoy and leave out all your stress";
+        $eventCategory->placeholder = "category/party.jpg";
         $eventCategory->save();
 
-        $eventCategory = new EventCategory();
-        $eventCategory->name = "Conference";
-        $eventCategory->slug = "conference";
-        $eventCategory->save();
+        // $eventCategory = new EventCategory();
+        // $eventCategory->name = "Conference";
+        // $eventCategory->slug = "conference";
+        // $eventCategory->placeholder = "category/conference.jpg";
+        // $eventCategory->save();
 
-        $eventCategory = new EventCategory();
-        $eventCategory->name = "Food";
-        $eventCategory->slug = "food";
-        $eventCategory->save();
+        // $eventCategory = new EventCategory();
+        // $eventCategory->name = "Food";
+        // $eventCategory->slug = "food";
+        // $eventCategory->placeholder = "category/food.jpg";
+        // $eventCategory->save();
 
-        $eventCategory = new EventCategory();
-        $eventCategory->name = "Education";
-        $eventCategory->slug = "education";
-        $eventCategory->save();
+        // $eventCategory = new EventCategory();
+        // $eventCategory->name = "Education";
+        // $eventCategory->slug = "education";
+        // $eventCategory->placeholder = "category/education.jpg";
+        // $eventCategory->save();
 
     }
 }

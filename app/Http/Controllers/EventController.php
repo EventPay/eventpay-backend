@@ -8,11 +8,13 @@ use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\EventCategoryEntry;
+use App\Models\Follow;
 use App\Models\User;
 use App\Models\Withdrawal;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Intervention\Image\Facades\Image;
@@ -69,7 +71,8 @@ class EventController extends Controller
      */
     public function show(Request $request, $event_id)
     {
-        $event = Event::find($event_id);
+
+        $event = Event::with("attendees.user")->find($event_id);
 
         if (!$event) {
             return response()->json([
@@ -80,9 +83,24 @@ class EventController extends Controller
         $event->tickets = $event->tickets;
         $event->comments = $event->comments();
 
+        $organizer = User::find($event->organizer);
+        $followingOrganizer = false;
+
+        if (Auth::check()) {
+            $follow = Follow::where("sending_user", auth()->user()->id)->where("target_user", $organizer->id)->get()->first();
+            if ($follow) {
+                $followingOrganizer = true;
+            } else {
+                $followingOrganizer = false;
+            }
+
+        }
+
         return response()->json([
             "success" => "Event Found",
             "event" => $event,
+            "organizer" => $organizer,
+            "following" => $followingOrganizer,
         ]);
     }
 
@@ -236,8 +254,9 @@ class EventController extends Controller
         $validator = Validator::make($request->all(), [
             "title" => "required|unique:events",
             "startDate" => "required|date",
-            "endDate" => "required|date",
+            "endDate" => "required|date|after:startDate",
             "description" => "required|string",
+            "location" => "required|string",
             "cover_image" => "required|image|mimes:jpeg,png,jpg,gif|max:2048", // Add image validation rules
             "categories" => "required",
             "type" => "required",
@@ -273,6 +292,8 @@ class EventController extends Controller
         $event->type = strtoupper($validated['type']);
         $event->organizer = auth()->user()->id;
         $event->description = $validated['description'];
+        $event->location = $validated['location'];
+        $event->auth_key = "Attend".uniqid();
         $event->active = true;
 
         // Change user to organizer
@@ -280,16 +301,16 @@ class EventController extends Controller
         $user->organizer = true;
         $user->save();
 
-        // Save cover image to storage
-        $coverImagePath = $coverImage->store('event', 'media');
+// Save cover image to public storage
+        $coverImagePath = $coverImage->store('event', 'public');
         $event->cover_image = $coverImagePath;
 
         $extraImages = [];
         if ($request->hasFile('extra_images')) {
             $extraImagesFiles = $request->file('extra_images');
             foreach ($extraImagesFiles as $extraImage) {
-                // Save extra images to storage
-                $extraImagePath = $extraImage->store('event_extra', 'media');
+                // Save extra images to public storage
+                $extraImagePath = $extraImage->store('event_extra', 'public');
                 $extraImages[] = $extraImagePath;
             }
         }
@@ -304,6 +325,14 @@ class EventController extends Controller
 
         if ($event->save()) {
             $categories = $validated['categories'];
+
+            if (is_string($validated['categories'])) {
+                $categories = json_decode($categories);
+            }
+
+            if ($validated['categories'] == null) {
+                $categories = [];
+            }
 
             foreach ($categories as $category) {
                 $cat = EventCategory::find($category);
@@ -326,7 +355,6 @@ class EventController extends Controller
             ], 500);
         }
     }
-
 
     /**
      * Edit an event.
@@ -370,10 +398,11 @@ class EventController extends Controller
     {
         $validator = Validator::make($request->all(), [
             "title" => "required",
-            "startDate" => "required",
-            "endDate" => "required",
+            "startDate" => "required|date",
+            "endDate" => "required|date|after:startDate",
             "description" => "required|string",
-            "cover_image" => "required|string",
+            "location" => "required|string",
+            "cover_image" => "nullable|image",
             "type" => "required",
             "visibility" => "required",
             "categories" => "required",
@@ -389,6 +418,7 @@ class EventController extends Controller
         }
 
         $validated = $validator->validated();
+        $coverImage = $request->file('cover_image');
 
         $event = Event::findOrFail($id);
         $event->title = $validated['title'];
@@ -398,30 +428,42 @@ class EventController extends Controller
         $event->visibility = strtoupper($validated['visibility']);
         $event->type = strtoupper($validated['type']);
         $event->description = $validated['description'];
+        $event->location = $validated['location'];
 
         // Check if image or base64
 
         // Decode the base64 string into an image file
-        $cover_image = Image::make(base64_decode($validated['cover_image']));
+        // Save cover image to public storage
+        if($request->hasFile("cover_image")){
+            $coverImagePath = $coverImage->store('event', 'public');
+            $event->cover_image = $coverImagePath;
+        }
 
-        $event->cover_image = uploadFileRequest($cover_image, "event", "media");
-
-        $extra_images = [];
-        if (isset($validated['extra_images'])) {
-            foreach ($validated['extra_images'] as $image) {
-                $img = Image::make(base64_decode($image));
-                $url = uploadFileRequest($img, "event_extra", "media");
-                $extra_images[] = $url;
+        $extraImages = [];
+        if ($request->hasFile('extra_images')) {
+            $extraImagesFiles = $request->file('extra_images');
+            foreach ($extraImagesFiles as $extraImage) {
+                // Save extra images to public storage
+                $extraImagePath = $extraImage->store('event_extra', 'public');
+                $extraImages[] = $extraImagePath;
             }
         }
 
-        $event->extra_images = json_encode($extra_images);
+        $event->extra_images = json_encode($extraImages);
 
         $event->tags = $validated['tags'];
 
         if ($event->save()) {
             $categories = $validated['categories'];
-            foreach ($categories as $category) {
+
+            if (is_string($validated['categories'])) {
+                $categories = json_decode($categories);
+            }
+
+            if ($validated['categories'] == null) {
+                $categories = [];
+            }
+            foreach ($categories ?? [] as $category) {
                 $cat = EventCategory::find($category);
                 if ($cat) {
                     $entry = new EventCategoryEntry();
@@ -471,14 +513,20 @@ class EventController extends Controller
      */
     public function search(Request $request)
     {
-        $query = $request->input("q", "");
+        $query = $request->input("q");
 
-        $events = Event::search($query)->get();
+        $events = Event::where('title', 'LIKE', "%$query%")
+                        ->orWhere('description', 'LIKE', "%$query%")
+                        ->orWhere('location', 'LIKE', "%$query%")
+                        ->orWhere('tags', 'LIKE', "%$query%")
+                        ->with("user")
+                        ->get();
 
         return response()->json([
             "events" => $events,
         ]);
     }
+
 
     /**
      * Delete an event.
@@ -615,7 +663,7 @@ class EventController extends Controller
      */
     public function listEvents()
     {
-        $eventsReturn = Event::where("status", "!=", "FINISHED")->where("status", "!=", "REVIEWING")->orderByDesc("created_at")->get();
+        $eventsReturn = Event::where("endDate","<",Carbon::now()->addMonths(4))->orderByDesc("created_at")->with("user")->get();
         $events = [];
 
         foreach ($eventsReturn as $event) {
@@ -720,4 +768,21 @@ class EventController extends Controller
 
         return back()->with("success", "Withdrawal approved");
     }
+
+
+    function expire(){
+                // Get events that are active and have an end date in the past
+                $expiredEvents = Event::where('active', true)
+                ->where('endDate', '<=', now())
+                ->get();
+
+            // Update the status of expired events
+            foreach ($expiredEvents as $event) {
+                $event->status = 'FINISHED';
+                $event->save();
+            }
+
+            return "Check complete";
+
+        }
 }

@@ -18,6 +18,7 @@ class CreateTicketsTable extends Migration
             $table->bigInteger("user_id");
             $table->bigInteger("parent_ticket");
             $table->longText("ticket_code");
+            $table->decimal("amount_paid",10,3);
             $table->enum("status",['UNUSED','USED']);
             $table->timestamps();
         });

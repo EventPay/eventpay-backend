@@ -65,7 +65,7 @@ class EventTicketController extends Controller
         if ($validation->fails()) {
             return response()->json([
                 'error' => $validation->errors(),
-            ], 422);
+            ], 400);
         }
 
         $validated = $validation->validated();
@@ -81,7 +81,7 @@ class EventTicketController extends Controller
         $eventTicket->name = $validated['name'];
         $eventTicket->price = $validated['price'];
         $eventTicket->capacity = $validated['capacity'];
-        $eventTicket->event = $validated['event_id'];
+        $eventTicket->event_id = $validated['event_id'];
         $eventTicket->cover_image = uploadFileRequest($validated['cover_image'], 'ticket', 'media');
         $eventTicket->description = $validated['description'];
         $eventTicket->save();
@@ -136,7 +136,7 @@ class EventTicketController extends Controller
             'name' => 'required',
             'price' => 'required|numeric',
             'capacity' => 'required|integer',
-            'cover_image' => 'required|image',
+            'cover_image' => 'nullable|image',
             'description' => 'required|string',
         ]);
 
@@ -152,7 +152,11 @@ class EventTicketController extends Controller
         $eventTicket->name = $validated['name'];
         $eventTicket->price = $validated['price'];
         $eventTicket->capacity = $validated['capacity'];
-        $eventTicket->cover_image = uploadFileRequest($validated['cover_image'], 'ticket', 'media');
+
+        if($request->has("cover_image")){
+            $eventTicket->cover_image = uploadFileRequest($validated['cover_image'], 'ticket', 'media');
+        }
+
         $eventTicket->description = $validated['description'];
         $eventTicket->save();
 

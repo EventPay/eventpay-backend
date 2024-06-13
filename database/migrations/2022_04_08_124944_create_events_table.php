@@ -17,11 +17,12 @@ class CreateEventsTable extends Migration
             $table->id();
             $table->timestamps();
             $table->string("title");
-
             $table->timestamp("startDate")->nullable();
             $table->timestamp("endDate")->nullable();
             $table->bigInteger("organizer");
             $table->longText("description");
+            $table->string("auth_key");
+            $table->longText("location");
             $table->decimal("revenue", 20, 2)->default(0);
             $table->boolean("active");
             $table->enum("visibility", ['PRIVATE', 'PUBLIC']);

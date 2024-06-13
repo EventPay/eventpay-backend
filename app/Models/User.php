@@ -47,6 +47,7 @@ class User extends Authenticatable
         $this->followersCount = $this->followersCount();
         $this->followingCount = $this->followingCount();
         $this->tickets = $this->tickets();
+        $this->events = $this->events;
 
         return $this;
     }
@@ -61,17 +62,8 @@ class User extends Authenticatable
 
     public function tickets()
     {
-        $userTickets = array();
-        $tickets = Ticket::where("user_id", $this->id);
-        foreach ($tickets as $ticket) {
-            $ticketDetails = EventTicket::find($ticket->parent_ticket);
-            $ticketDetails->user_id = $ticket->user_id;
-            $ticketDetails->ticket_code = $ticket->ticket_code;
-            $ticketDetails->status = $ticket->status;
-
-            array_push($userTickets, $ticketDetails);
-        };
-        return $userTickets;
+        $tickets = Ticket::where("user_id", $this->id)->with(['eventTicket.event'])->get();
+        return $tickets;
     }
 
 
@@ -90,5 +82,29 @@ class User extends Authenticatable
     public function emailCode()
     {
         return $this->hasOne(EmailCode::class, "user_id");
+    }
+
+    public function following()
+    {
+        return $this->hasMany(Follow::class, 'sending_user', 'id');
+    }
+
+    public function followers()
+    {
+        return $this->hasMany(Follow::class, 'target_user', 'id');
+    }
+
+    public function getFollowing()
+    {
+        return $this->following->map(function ($follow) {
+            return User::find($follow->target_user);
+        });
+    }
+
+    public function getFollowers()
+    {
+        return $this->followers->map(function ($follow) {
+            return User::find($follow->sending_user);
+        });
     }
 }

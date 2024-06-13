@@ -38,43 +38,43 @@
                         <div class="card-body">
                             <div class="row">
 
-                        
-                            <form class="col-md-5" action="" method="GET">
 
-                                <div class="input-group mb-3">
-                                    <input type="text" class="form-control" name="q" placeholder="Enter a keyword"value="@php if($search) echo $search @endphp">
-                                    <span class="input-group-text" id="basic-addon1"><i class="fa fa-search"></i></span>
-                                  </div>
+                                <form class="col-md-5" action="" method="GET">
 
-                                  <button class="btn btn-primary">
-                                    Search
-                                  </button>
-                            </form>
+                                    <div class="input-group mb-3">
+                                        <input type="text" class="form-control" name="q"
+                                            placeholder="Enter a keyword"value="@php if($search) echo $search @endphp">
+                                        <span class="input-group-text" id="basic-addon1"><i class="fa fa-search"></i></span>
+                                    </div>
+
+                                    <button class="btn btn-primary">
+                                        Search
+                                    </button>
+                                </form>
 
                             </div>
                         </div>
                     </div>
 
-                </br>
-                @if($search)
-                <div class="search-info py-2 h5 fw-normal text-center text-dark">
-                    Results for search query "{{ $search }}"
-                </div>
-                @endif
+                    </br>
+                    @if ($search)
+                        <div class="search-info py-2 h5 fw-normal text-center text-dark">
+                            Results for search query "{{ $search }}"
+                        </div>
+                    @endif
                     <div class="card">
                         <div class="card-header">
                             <strong class="card-title">Recent Events</strong>
                         </div>
                         <div class="table-stats order-table ov-h">
-                            <table class="table ">
+                            <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th class="serial">#</th>
                                         <th class="avatar"></th>
                                         <th>Date</th>
                                         <th>Title</th>
                                         <th>Tickets</th>
-                                        <th>Attending</th>
+                                        <th>Sales</th>
                                         <th>Status</th>
                                         <th></th>
                                     </tr>
@@ -83,40 +83,42 @@
 
                                     @foreach ($events as $event)
                                         <tr>
-                                            <td>{{ $event->id }}</td>
                                             <td class="avatar">
-                                                <div class="round-img">
-                                                    <a href="#"><img class="rounded-circle"
-                                                            src="{{ $event->cover_image }}" alt=""></a>
+                                                <div class="">
+                                                    <a href="#"><img class="rounded-2" style="object-fit: cover"
+                                                            src="{{ asset('storage/' . $event->cover_image) }}"
+                                                            alt="" width="70" height="70"></a>
                                                 </div>
                                             </td>
-                                            <td>{{ show_date($event->startDate) }}</td>
+                                            <td>{{ formatDateTime($event->startDate) }}</td>
                                             <td>{{ $event->title }}</td>
                                             <td>{{ sizeOf($event->tickets) }}</td>
-                                            <td>{{ 44 }}</td>
-                                            <td>{{ $event->status }}</td>
+                                            <td>{{ $event->attendees->count() }}
+                                            </td>
+                                            <td>
+                                                @if ($event->status == 'PENDING')
+                                                    <small class="badge badge-success">PENDING</small>
+                                                @elseif($event->status == 'FINISHED')
+                                                    <small class="badge bg-dark">
+                                                        FINISHED
+                                                    </small>
+                                                @elseif($event->status == 'REVIEWING')
+                                                    <small class="badge bg-warning">
+                                                        REVIEWING
+                                                    </small>
+                                                @endif
                                             <td>
 
-                                                <a class="btn btn-sm btn-warning" href="{{ route("admin.edit-event",['id' => $event->id]) }}">
-                                                    Edit <i class="fa fa-pencil"></i>
+                                                    <a href="{{ route('admin.event-details',$event->id) }}" class="btn btn-sm btn-primary ">
+                                                    View Event <i class="fa fa-eye"></i>
                                                 </a>
-
-                                                <button class="btn btn-primary btn-sm">
-                                                    View <i class="fa fa-eye"></i>
-                                                </button>
-
-
-                                            </td>
-                                            <td>
-                                            {{-- {{ View event page }} --}}
-                                                <a href="#" class="btn btn-success btn-sm">View <i class="fa fa-eye"></i> </a>
-                                                <a href="{{ route("suspend-event") }}" class="btn btn-danger btn-sm">Suspend <i class="fa fa-not-allowed"></i> </a>
-                                            </td>
+                                                </td>
                                         </tr>
                                     @endforeach
 
                                 </tbody>
                             </table>
+                            {{ $events->links() }}
                         </div> <!-- /.table-stats -->
                     </div>
                 </div>

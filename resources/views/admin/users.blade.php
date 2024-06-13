@@ -88,10 +88,10 @@
                                                             src="{{ $user->profile_image }}" alt=""></a>
                                                 </div>
                                             </td>
-                                            <td>{{ $user->name }}</td>
+                                            <td>{{ $user->firstname }} {{ $user->lastname }}</td>
                                             <td>{{ $user->email }}</td>
                                             <td>{{ $user->phone }}</td>
-                                            <td>{{ show_date($user->created_at) }}</td>
+                                            <td>{{ diffFormat($user->created_at) }}</td>
                                             <td>
                                                 <button class="btn btn-primary btn-sm">
                                                     View <i class="fa fa-eye"></i>
@@ -104,6 +104,7 @@
 
                                 </tbody>
                             </table>
+                            {{ $users->links() }}
                         </div> <!-- /.table-stats -->
                     </div>
                 </div>

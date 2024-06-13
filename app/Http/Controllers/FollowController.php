@@ -11,12 +11,26 @@ use Illuminate\Support\Facades\Validator;
 class FollowController extends Controller
 {
 
+
+    function getFollowing(){
+        $user = Auth::user();
+
+        return $user->getFollowing();
+    }
+
+    function getFollowers(){
+
+        $user = Auth::user();
+        return $user->getFollowers();
+    }
+
     public function follow(Request $request)
     {
 
         $validator = Validator::make($request->all(), [
-            "target_user" => "id",
+            "target_user" => "required|integer",
         ]);
+
         if ($validator->fails()) {
             return response()->json([
                 'error' => $validator->errors(),
@@ -26,7 +40,7 @@ class FollowController extends Controller
         //validation success
         $validated = $validator->validated();
 
-        
+
         //checking if user exists
         $user = User::find($validated['target_user']);
 
@@ -35,6 +49,10 @@ class FollowController extends Controller
                 'error' => "User not found",
             ], 404);
         }
+
+        
+        //check previous
+        Follow::where("sending_user",Auth::user()->id)->where("target_user",$validated['target_user'])->delete();
 
         $follow = new Follow();
         $follow->sending_user = Auth::user()->id;
@@ -50,7 +68,7 @@ class FollowController extends Controller
     {
 
         $validator = Validator::make($request->all(), [
-            "target_user" => "id",
+            "target_user" => "required|integer",
         ]);
         if ($validator->fails()) {
             return response()->json([

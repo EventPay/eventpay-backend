@@ -12,6 +12,7 @@
         "laravel/framework": "^8.75",
         "laravel/sanctum": "^2.15",
         "laravel/scout": "^9.7",
+        "laravel/socialite": "^5.12",
         "laravel/tinker": "^2.5",
         "ovac/idoc": "^1.6"
     },

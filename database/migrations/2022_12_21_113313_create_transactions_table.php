@@ -15,7 +15,7 @@ class CreateTransactionsTable extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->decimal("amount", 8, 5);
+            $table->decimal("amount", 10, 2);
             $table->bigInteger("user_id");
             $table->string("description");
             $table->enum("status", ["APPROVED", "PENDING"]);

@@ -17,8 +17,8 @@ class CreateEventTicketsTable extends Migration
             $table->id();
             $table->bigInteger("event_id");
             $table->string("name");
-            $table->decimal("price");
-            $table->bigInteger("ticket_capacity")->default(50);
+            $table->decimal("price",10,2);
+            $table->bigInteger("capacity")->default(100);
             $table->string("cover_image");
             $table->longText("description");
             $table->timestamps();

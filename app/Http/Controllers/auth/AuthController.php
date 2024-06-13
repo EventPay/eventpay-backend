@@ -12,13 +12,77 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
 
+    /**
+     * Register a new user.
+     *
+     * Registers a new user account and logs them in.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam firstname string required The user's first name (max: 40 characters).
+     * @bodyParam lastname string required The user's last name (max: 40 characters).
+     * @bodyParam username string required|unique:users|max:50 The desired username (unique).
+     * @bodyParam email string required|email|unique:users The user's email address (unique).
+     * @bodyParam gender string required The user's gender.
+     * @bodyParam phone string required The user's phone number.
+     * @bodyParam password string required The user's password.
+     *
+     * @response 201 {
+     *     "success": "Registration Successful",
+     *     "token": "ApiAuthToken",
+     *     "user": {
+     *         "id": 1,
+     *         "firstname": "John",
+     *         "lastname": "Doe",
+     *         "username": "johndoe",
+     *         "email": "john@example.com",
+     *         "phone": "1234567890",
+     *         "gender": "MALE",
+     *         "created_at": "2023-09-08T12:34:56.000000Z",
+     *         "updated_at": "2023-09-08T12:34:56.000000Z"
+     *     },
+     *     "email_verified": null
+     * }
+     * @response 400 {
+     *     "error": {
+     *         "firstname": [
+     *             "The firstname field is required."
+     *         ],
+     *         "lastname": [
+     *             "The lastname field is required."
+     *         ],
+     *         "username": [
+     *             "The username field is required."
+     *         ],
+     *         "email": [
+     *             "The email field is required."
+     *         ],
+     *         "gender": [
+     *             "The gender field is required."
+     *         ],
+     *         "phone": [
+     *             "The phone field is required."
+     *         ],
+     *         "password": [
+     *             "The password field is required."
+     *         ]
+     *     }
+     * }
+     * @response 401 {
+     *     "error": "Something is extremely wrong"
+     * }
+     * @response 404 {
+     *     "error": "An error occurred, please try again later"
+     * }
+     */
     public function register(Request $request)
     {
 
         $validator = Validator::make($request->all(), [
             "firstname" => "required|string|max:40",
             "lastname" => "required|string|max:40",
-            "username" => "required|string|max:50|unique",
+            "username" => "required|string|max:50|unique:users",
             "email" => "required|email|unique:users",
             "gender" => "required",
             "phone" => "required",
@@ -28,7 +92,7 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 "error" => $validator->errors(),
-            ]);
+            ], 400);
         }
         //validation successful
 
@@ -46,22 +110,17 @@ class AuthController extends Controller
 
         //   dd($user);
 
-  
-
-
-
         if ($user->save()) {
 
             //Attmept login if user saved
-            if(!Auth::attempt([
+            if (!Auth::attempt([
                 "email" => $user->email,
-                "password" => $request->password
-            ])){
+                "password" => $request->password,
+            ])) {
                 return response()->json([
                     "error" => "Something is extremely wrong",
                 ], 401);
             }
-
 
             return response()->json([
                 "success" => "Registration Successful",
@@ -76,6 +135,48 @@ class AuthController extends Controller
         }
 
     }
+
+    /**
+     * User login.
+     *
+     * Logs in a user with their email and password.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam email string required The user's email address.
+     * @bodyParam password string required The user's password.
+     *
+     * @response {
+     *     "success": "Login successful",
+     *     "token": "ApiAuthToken",
+     *     "user": {
+     *         "id": 1,
+     *         "firstname": "John",
+     *         "lastname": "Doe",
+     *         "username": "johndoe",
+     *         "email": "john@example.com",
+     *         "phone": "1234567890",
+     *         "gender": "MALE",
+     *         "created_at": "2023-09-08T12:34:56.000000Z",
+     *         "updated_at": "2023-09-08T12:34:56.000000Z"
+     *     },
+     *     "email_verified": null
+     * }
+     * @response 400 {
+     *     "error": {
+     *         "email": [
+     *             "The email field is required."
+     *         ],
+     *         "password": [
+     *             "The password field is required."
+     *         ]
+     *     }
+     * }
+     * @response 401 {
+     *     "error": "Credentials do not match."
+     * }
+     */
 
     public function login(Request $request)
     {
@@ -114,24 +215,43 @@ class AuthController extends Controller
 
     }
 
+    /**
+     * Check username availability.
+     *
+     * Checks if a username is available or already taken.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam username string required The desired username.
+     *
+     * @response 200 {
+     *     "success": true,
+     *     "message": "Username is available."
+     * }
+     * @response 400 {
+     *     "success": false,
+     *     "message": "Username is already taken."
+     * }
+     */
+
     public function checkUsernameAvailability(Request $request)
     {
         $username = $request->input('username');
-    
+
         // Check if the username is already in use
         $user = User::where('username', $username)->first();
         if ($user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Username is already taken.'
+                'message' => 'Username is already taken.',
             ], 400);
         }
-    
+
         return response()->json([
             'success' => true,
-            'message' => 'Username is available.'
+            'message' => 'Username is available.',
         ], 200);
     }
-    
 
 }

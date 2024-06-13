@@ -15,7 +15,33 @@ use Nette\Utils\Random;
 
 class ForgotPasswordController extends Controller
 {
-
+    /**
+     * Send a verification code for password reset.
+     *
+     * Sends a verification code to the user's email address for password reset.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam email string required The user's email address.
+     *
+     * @response {
+     *     "success": "Code sent"
+     * }
+     * @response 400 {
+     *     "error": {
+     *         "email": [
+     *             "The email field is required."
+     *         ]
+     *     }
+     * }
+     * @response 404 {
+     *     "error": "We could not find an account with that email"
+     * }
+     * @response 500 {
+     *     "error": "Error sending mail : [error message]"
+     * }
+     */
     public function sendCode(Request $request)
     {
 
@@ -69,12 +95,38 @@ class ForgotPasswordController extends Controller
 
     }
 
+    /**
+     * Check the verification code for password reset.
+     *
+     * Checks the verification code sent to the user's email address for password reset.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam code int required The verification code (numeric).
+     * @bodyParam email string required The user's email address.
+     *
+     * @response {
+     *     "success": "Code correct",
+     *     "auth_token": "GeneratedAuthToken"
+     * }
+     * @response 400 {
+     *     "error": "Code is required"
+     * }
+     * @response 401 {
+     *     "error": "Incorrect code"
+     * }
+     * @response 403 {
+     *     "error": "Code expired, please request another one"
+     * }
+     */
+
     public function checkCode(Request $request)
     {
 
         $validator = Validator::make($request->all(), [
             "code" => "numeric|required",
-            "email" => "required"
+            "email" => "required",
         ]);
 
         //checks if code is valid
@@ -120,6 +172,31 @@ class ForgotPasswordController extends Controller
 
     }
 
+    /**
+     * Change user password.
+     *
+     * Changes the user's password after verification.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @bodyParam auth_token string required The authentication token.
+     * @bodyParam new_password string required The new password (min: 8 characters).
+     *
+     * @response {
+     *     "success": "Password changed successfully"
+     * }
+     * @response 400 {
+     *     "error": "Code is required"
+     * }
+     * @response 403 {
+     *     "error": "Auth token not found"
+     * }
+     * @response 401 {
+     *     "error": "Auth code incorrect"
+     * }
+     */
+
     public function changePassword(Request $request)
     {
 
@@ -132,9 +209,10 @@ class ForgotPasswordController extends Controller
         //checks if code is valid
         if ($validator->fails()) {
             return response()->json([
-                "error" => "Code is required",
+                "error" => $validator->errors(),
             ], 400);
         }
+
 
         $password_reset = PasswordReset::where("auth_token", $request->auth_token)->get()->first();
 
@@ -155,7 +233,7 @@ class ForgotPasswordController extends Controller
 
         //code is correct and user is found
 
-        $user = User::where("email",$password_reset->email)->get()->first();
+        $user = User::where("email", $password_reset->email)->get()->first();
         $user->password = Hash::make($request->new_password);
         $user->save();
 
