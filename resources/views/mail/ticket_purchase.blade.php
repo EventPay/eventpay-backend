@@ -10,6 +10,7 @@ Here are the details for your ticket:
 - Date: {{ show_date($ticket->eventTicket->event->start_date) }}
 - Location: {{ $ticket->eventTicket->event->location }}
 - Ticket Code: {{ $ticket->ticket_code }}
+- Ticket Name: {{ $ticket->eventTicket->name }}
 - Ticket Price: ₦{{ number_format($ticket->eventTicket->price) }}
 
 Please make sure to bring this information with you to the event.
@@ -21,8 +22,8 @@ To make your entry to the event even more convenient, we've attached a QR code t
 @component('mail::panel')
 
 
-<img src="https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl={{ $ticket->ticket_code }}"
-    alt="QR Code" style="display: block; margin: 20px auto;">
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={{$ticket->ticket_code}}" alt="QR Code" style="display: block; margin: 20px auto;">
+
 
 @endcomponent
 

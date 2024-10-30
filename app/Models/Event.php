@@ -27,6 +27,9 @@ class Event extends Model
     function attendees(){
         return $this->hasManyThrough(Ticket::class,EventTicket::class,"event_id","parent_ticket");
     }
+    function revenue(){
+        return $this->attendees()->sum('amount_paid');
+    }
 
     public function comments()
     {

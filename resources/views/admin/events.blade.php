@@ -108,11 +108,19 @@
                                                     </small>
                                                 @endif
                                             <td>
-
-                                                    <a href="{{ route('admin.event-details',$event->id) }}" class="btn btn-sm btn-primary ">
+                                                <a href="{{ route('admin.event-details', $event->id) }}"
+                                                    class="btn btn-sm btn-primary ">
                                                     View Event <i class="fa fa-eye"></i>
                                                 </a>
-                                                </td>
+
+                                                <form action="{{ route('admin.delete-event', $event->id) }}" method="POST"
+                                                    onsubmit="return confirm('Are you sure you want to delete this event?')">
+                                                    @csrf
+                                                    <button class="btn btn-sm btn-danger mt-2">
+                                                        Delete Event <i class="fa fa-trash"></i> </button>
+
+                                                </form>
+                                            </td>
                                         </tr>
                                     @endforeach
 

@@ -71,6 +71,8 @@
             height: 160px;
         }
     </style>
+
+<script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
 </head>
 
 <body>
@@ -92,6 +94,11 @@
                      <a href="{{ route('admin.users', ['param' => 'recent', 'order' => 1]) }}">
                         <i class="menu-icon fa fa-users"></i>Users</a>
                     </li>
+
+                    <li>
+                        <a href="{{ route('admin.broadcast') }}">
+                           <i class="menu-icon fa fa-bullhorn"></i>Broadcast</a>
+                       </li>
                     {{-- <li class="menu-item-has-children dropdown">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
                             aria-expanded="false">
@@ -126,7 +133,7 @@
         <header id="header" class="header">
             <div class="top-left">
                 <div class="navbar-header">
-                    <a class="navbar-brand" href="/"><img src="{{ asset('logo.png') }}" alt="Logo" /></a>
+                    <a class="navbar-brand" href="/"><img src="{{ asset('logo.png') }}" alt="Logo" width="100"/></a>
                     <a class="navbar-brand hidden" href="/"><img src="{{ asset('logo.png') }}" alt="Logo" /></a>
                     <a id="menuToggle" class="menutoggle"><i class="fa fa-bars"></i></a>
                 </div>
@@ -159,6 +166,25 @@
                 </div>
             </div>
         </header>
+
+        @if (session('success'))
+        <div class="alert alert-success">{{ session('success') }}</div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger">{{ session('error') }}</div>
+    @endif
+
+
+    @if ($errors->any())
+        <div class="alert alert-danger">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
         @yield('content')
 
         <!-- /.content -->

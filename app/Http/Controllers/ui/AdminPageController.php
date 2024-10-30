@@ -10,6 +10,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AdminPageController extends Controller
 {
@@ -36,6 +37,24 @@ class AdminPageController extends Controller
     public function login()
     {
         return view("admin.login");
+    }
+
+
+    public function tickets($id)
+    {
+        $tickets = Ticket::select('user_id', 'users.email', DB::raw('count(*) as total_tickets'), DB::raw('sum(amount_paid) as total_amount_paid'))
+            ->join('users', 'tickets.user_id', '=', 'users.id')
+            ->where('parent_ticket', $id)
+            ->groupBy('user_id', 'users.email')
+            ->paginate(30);
+
+        return view('admin.tickets')->with("tickets", $tickets);
+    }
+
+
+    public function broadcast()
+    {
+        return view("admin.broadcast");
     }
 
     public function eventDetails($id)

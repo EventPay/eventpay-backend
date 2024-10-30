@@ -325,7 +325,6 @@ class UserController extends Controller
         ]);
     }
 
-
     public function getOrganizer($id)
     {
 
@@ -341,10 +340,33 @@ class UserController extends Controller
         return response()->json([
             "success" => "Retrieval success",
             "user" => $user->getData(),
+            "events" => $user->events,
         ]);
     }
 
 
+    public function editNumber(Request $request)
+    {
+        $validation = Validator::make($request->all(), [
+            'phone' => 'required',
+        ]);
+
+        if ($validation->fails()) {
+            return response()->json([
+                'error' => $validation->errors(),
+            ], 422);
+        }
+
+        $user = User::find(auth()->user()->id);
+        $user->phone = $request->phone;
+        $user->save();
+
+        return response()->json([
+            'success' => 'Phone number updated successfully',
+        ]);
+
+    }
+    
 
     public function tickets()
     {
@@ -362,7 +384,7 @@ class UserController extends Controller
             }
 
             if ($ticket->eventTicket->event->endDate <= now() && !in_array($ticket->eventTicket->event, $events_attended)) {
-                if($ticket->status == "USED"){
+                if ($ticket->status == "USED") {
                     array_push($events_attended, $ticket->eventTicket->event);
                 }
             }
@@ -376,27 +398,21 @@ class UserController extends Controller
         ]);
     }
 
-
-
-
-    function organizer($id){
-
-
+    public function organizer($id)
+    {
 
     }
 
-
-    function organizers(){
+    public function organizers()
+    {
         $user = auth()->user();
 
-        $organizers = User::where("organizer",true)->orderBy("created_at","asc")->get();
-
+        $organizers = User::where("organizer", true)->orderBy("created_at", "asc")->get();
 
         return response()->json([
             "success" => "Request Successful",
             "organizers" => $organizers,
         ]);
-
 
     }
 

@@ -23,7 +23,7 @@ class CreateEventsTable extends Migration
             $table->longText("description");
             $table->string("auth_key");
             $table->longText("location");
-            $table->decimal("revenue", 20, 2)->default(0);
+            // $table->decimal("revenue", 20, 2)->default(0);
             $table->boolean("active");
             $table->enum("visibility", ['PRIVATE', 'PUBLIC']);
             $table->enum("type", ['PHYSICAL', 'ONLINE']);

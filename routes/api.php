@@ -71,6 +71,7 @@ Route::group(['middleware' => "auth:sanctum"], function () {
     Route::post("/user/edit/profile-image", [UserController::class, "uploadProfile"])->name("upload-profile");
     Route::post("/user/edit/cover-image", [UserController::class, "uploadCoverImage"])->name("upload-cover-image");
     Route::post("/user/edit/profile", [UserController::class, "edit"])->name("edit-profile");
+    Route::post("/user/edit/phone", [UserController::class, "editNumber"])->name("edit-number");
     Route::post("/user/edit/change-password/", [UserController::class, "changePassword"])->name("change-password");
 
     //email verification

@@ -18,10 +18,12 @@ class TicketReminder extends Mailable
      */
 
      public $ticket;
+     public $time;
 
-    public function __construct($ticket)
+    public function __construct($ticket,$time)
     {
         $this->ticket = $ticket;
+        $this->time = $time;
     }
 
     /**
@@ -31,6 +33,6 @@ class TicketReminder extends Mailable
      */
     public function build()
     {
-        return $this->markdown('mail.ticket-reminder')->subject("Re:see you at ".$this->ticket->eventTicket->event->title);
+        return $this->markdown('mail.ticket-reminder')->subject($this->ticket->eventTicket->event->title." is live in ".$this->time);
     }
 }

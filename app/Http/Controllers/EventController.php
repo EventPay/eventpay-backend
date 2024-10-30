@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\EventCategory;
 use App\Models\EventCategoryEntry;
 use App\Models\Follow;
+use App\Models\ReminderBroadCastQueue;
 use App\Models\User;
 use App\Models\Withdrawal;
 use Carbon\Carbon;
@@ -82,6 +83,7 @@ class EventController extends Controller
 
         $event->tickets = $event->tickets;
         $event->comments = $event->comments();
+        $event->revenue = $event->revenue();
 
         $organizer = User::find($event->organizer);
         $followingOrganizer = false;
@@ -293,7 +295,7 @@ class EventController extends Controller
         $event->organizer = auth()->user()->id;
         $event->description = $validated['description'];
         $event->location = $validated['location'];
-        $event->auth_key = "Attend".uniqid();
+        $event->auth_key = "Attend" . uniqid();
         $event->active = true;
 
         // Change user to organizer
@@ -434,7 +436,7 @@ class EventController extends Controller
 
         // Decode the base64 string into an image file
         // Save cover image to public storage
-        if($request->hasFile("cover_image")){
+        if ($request->hasFile("cover_image")) {
             $coverImagePath = $coverImage->store('event', 'public');
             $event->cover_image = $coverImagePath;
         }
@@ -516,17 +518,16 @@ class EventController extends Controller
         $query = $request->input("q");
 
         $events = Event::where('title', 'LIKE', "%$query%")
-                        ->orWhere('description', 'LIKE', "%$query%")
-                        ->orWhere('location', 'LIKE', "%$query%")
-                        ->orWhere('tags', 'LIKE', "%$query%")
-                        ->with("user")
-                        ->get();
+            ->orWhere('description', 'LIKE', "%$query%")
+            ->orWhere('location', 'LIKE', "%$query%")
+            ->orWhere('tags', 'LIKE', "%$query%")
+            ->with("user")
+            ->get();
 
         return response()->json([
             "events" => $events,
         ]);
     }
-
 
     /**
      * Delete an event.
@@ -555,6 +556,18 @@ class EventController extends Controller
             return response()->json([
                 "error" => "Server error, please contact admin",
             ]);
+        }
+    }
+
+    public function destroyAdmin($id)
+    {
+        $event = Event::findOrFail($id);
+
+        if ($event->delete()) {
+
+            return redirect()->back()->with("success", "Admin deleted successfully");
+        } else {
+            return redirect()->back()->with("success", "An error occurred");
         }
     }
 
@@ -663,7 +676,7 @@ class EventController extends Controller
      */
     public function listEvents()
     {
-        $eventsReturn = Event::where("endDate","<",Carbon::now()->addMonths(4))->orderByDesc("created_at")->with("user")->get();
+        $eventsReturn = Event::where("endDate", "<", Carbon::now()->addMonths(4))->orderByDesc("created_at")->with("user")->get();
         $events = [];
 
         foreach ($eventsReturn as $event) {
@@ -769,20 +782,65 @@ class EventController extends Controller
         return back()->with("success", "Withdrawal approved");
     }
 
+    public function expire()
+    {
+        // Get events that are active and have an end date in the past
+        $expiredEvents = Event::where('active', true)
+            ->where('endDate', '<=', now())
+            ->get();
 
-    function expire(){
-                // Get events that are active and have an end date in the past
-                $expiredEvents = Event::where('active', true)
-                ->where('endDate', '<=', now())
-                ->get();
-
-            // Update the status of expired events
-            foreach ($expiredEvents as $event) {
-                $event->status = 'FINISHED';
-                $event->save();
-            }
-
-            return "Check complete";
-
+        // Update the status of expired events
+        foreach ($expiredEvents as $event) {
+            $event->status = 'FINISHED';
+            $event->save();
         }
+
+        return "Check complete";
+
+    }
+
+    public function sendReminders()
+    {
+
+        $currentTime = Carbon::now('Africa/Lagos')->startOfMinute();
+
+        $events = Event::where('startDate', '>', $currentTime)
+            ->where('status', 'PENDING')
+            ->get();
+
+        foreach ($events as $event) {
+            $eventTime = Carbon::parse($event->startDate)->setTimezone('Africa/Lagos')->subHour()->startOfMinute();
+
+            $reminders = [
+                '3 days' => $eventTime->copy()->subDays(3)->startOfMinute(),
+                '48 hours' => $eventTime->copy()->subDays(2)->startOfMinute(),
+                '24 hours' => $eventTime->copy()->subDay()->startOfMinute(),
+                '6 hours' => $eventTime->copy()->subHours(6)->startOfMinute(),
+                '1 hour' => $eventTime->copy()->subHour()->startOfMinute(),
+            ];
+
+            foreach ($reminders as $key => $time) {
+
+                $time = Carbon::parse($time);
+
+                if ($currentTime == $time) {
+                    echo "Time is equal <br>";
+                    $tickets = $event->attendees;
+                    foreach ($tickets as $ticket) {
+
+                        //Queue email
+                        $queue = new ReminderBroadCastQueue();
+                        $queue->ticket_id = $ticket->id;
+                        $queue->time = ltrim($key, '-');
+                        $queue->processed = false;
+                        $queue->save();
+
+                        //Mail::to($ticket->user->email)->send(new MailTicketReminder($ticket, ltrim($key, '-')));
+                        echo "Reminder for " . $ticket->eventTicket->event->title . " sent to " . $ticket->user->email;
+                    }
+                }
+            }
+        }
+    }
+
 }

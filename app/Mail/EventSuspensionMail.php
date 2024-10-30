@@ -28,6 +28,7 @@ class EventSuspensionMail extends Mailable
      */
     public function build()
     {
-        return $this->view('mail.event_suspended');
+        return $this->view('mail.event_suspended
+        ');
     }
 }
